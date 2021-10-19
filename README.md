@@ -38,6 +38,9 @@ Finally, please create a dedicated MD file to explain your approach. We'd like t
 
 We recommend you spend 1 hour to complete your readme.
 
+
+**When you are done, please let us know. From there, we will remove your access rights to the repository in order to review your skill test. But don't worry, it will only be temporary! We will restore your access right after the debrief so that you can have a look to our review.**
+
 # Well done!
 
 Thank you for your time; if you have any questions, don't hesitate to contact us. We will quickly review your code and get back to you.
