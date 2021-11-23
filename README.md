@@ -48,7 +48,7 @@ Your next interview will be the Skills Test debrief where we will ask you to pre
 
 Please answer in 🇺🇸  English.
 
-**When you are done, please let us know. From there, we will remove your access rights to the repository in order to review your skill test. But don't worry, it will only be temporary! We will restore your access right after the debrief so that you can have a look to our review.**
+**When you are done, please let us know. From there, we will remove your access rights to the repository in order to review your skill test. But don't worry, it will only be temporary! We will restore your access rights after the debrief so that you can check out our review.**
 
 # Well done!
 
