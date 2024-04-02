@@ -8,7 +8,7 @@ We created your GitHub repository here, can you access it?
 
 The test usually takes between 3-5h, but if you need more time don't hesitate to take it and explain why. You don't have to do it all at once if you don't feel like it. Don't forget to put your focus on quality, good practices, and UI ;)
 
-We expect the test to be returned in 3 days maximum.
+We expect the test to be returned in 2 days maximum.
 
 For the skill test debrief, we will arrange a date once you have finished your exercise. During the debrief, we will invite you to present your work and ask you related questions. For you to succeed, you must prepare it.
 Precisely, we expect you to:
