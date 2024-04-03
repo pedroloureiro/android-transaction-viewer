@@ -1,6 +1,6 @@
 Before you start, we would like to congratulate you on reaching that stage of our hiring process; it's already a significant achievement!
 
-This is a technical exercise where we want to see the best of you. This exercise is limited to 3 days in total, so don't rush it and take the time you need within that limit. Please keep in mind, we recommend favoring quality over quantity.
+This is a technical exercise where we want to see the best of you. This exercise is limited to 2 days in total, so don't rush it and take the time you need within that limit. Please keep in mind, we recommend favoring quality over quantity.
 
 # How to submit your work
 Use this GitHub repository to push your code.
