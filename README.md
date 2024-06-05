@@ -38,7 +38,7 @@ We favour quality over quantity, so here are a few things you should keep in min
 
 Context - Qonto engineers are active during our conception phases (Value Engineering, DiveIns) where they are required to write down their ideas, plan their work and engage in technical discussion with peers. 
 
-Your next interview will be the Skills Test debrief where we will ask you to present your work and justify your choices. To prepare for this interview, it's important that you take the time to create a new Markdown file (.md) on your pull request and on this document to answer the following questions:
+Your next interview will be the Skills Test debrief where we will ask you to present your work and justify your choices. To prepare for this interview, it's expected that you take the time to create a new Markdown file (.md) on your pull request and on this document to answer the following questions:
 
 - give us your context at the time you did this skills test. Were you stressed/relaxed, under some constraints?
 - present your work; explain its architecture, main components and how they interact with each other. Feel free to include diagrams as appropriate. Hand-drawn is fine.
