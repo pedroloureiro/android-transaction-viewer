@@ -2,6 +2,14 @@ Before you start, we would like to congratulate you on reaching that stage of ou
 
 This is a technical exercise where we want to see the best of you. This exercise is limited to 2 days in total, so don't rush it and take the time you need within that limit. Please keep in mind, we recommend favoring quality over quantity.
 
+## :bulb: Note on AI
+We see AI as a catalyst for our success - not a shortcut, but a way to think sharp and raise the bar. We actively encourage you to use it. What we care about is how you use it.
+
+Come to your presentation ready to walk us through:
+- What you used AI for - and what you chose not to;
+- How you prompted it - bring concrete examples;
+- How you challenged it - where you pushed back, iterated, or discarded its output.
+
 # How to submit your work
 Use this GitHub repository to push your code.
 
