@@ -26,11 +26,9 @@ We will then use this pull request to review your code.
 
 # Part 1 - Let's make an application!
 
-Build an application that fetches data from this API - [https://randomuser.me](https://randomuser.me/) - and displays a list of Users. 
-Start by reading the API documentation [https://randomuser.me/documentation](https://randomuser.me/documentation). 
-Your application should display a list of Users. Each item in the list should contain first and last names on one line and the email below. 
-As the user scrolls down the list the application should fetch incremental number of pages. 
-Finally, while offline, previously loaded Users should still be accessible from the list. We recommend you implement this based on a classic database solution like Room.
+Build an application that fetches data from this API - [Transactions API](https://us-central1-qonto-staging.cloudfunctions.net/transactions) - and displays a list of Transactions.
+Start by reading the API documentation [here](https://qonto.notion.site/Public-Documentation-API-get-Transactions-34131ee4c69680d48790f31fd7d66e0f). Your application should fetch multiple pages of Transactions from that API and display a list of Transactions showing at least the `counterpartyName` and `amount` on one line, and the `settledAt` and `status` below. 
+Following pages should be fetched when users scroll the list. Finally, while offline, previously loaded Transactions should still be accessible from the list. We recommend you implement this based on a classic database solution like Room.
 
 ## Code guidelines
 
