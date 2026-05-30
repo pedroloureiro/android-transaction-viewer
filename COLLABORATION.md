@@ -133,6 +133,19 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 
 **What was done:** All DTOs consolidated in one file (`TransactionResponseDto.kt`). `TransactionService` defines the Retrofit interface. `TransactionMapper` provides `TransactionDto.toEntity()` and `TransactionEntity.toDomain()` as extension functions.
 
+### `feat: add TransactionRemoteMediator, TransactionLocalDataSource, and tests`
+
+**What was done:** `TransactionLocalDataSource` (interface + impl) introduced as the single gateway between the database layer and all other layers. `TransactionRemoteMediator` refactored to depend only on `TransactionLocalDataSource` and `TransactionService`. `PaginationState` added as a purpose-built type in `data/local/model/` so the mediator never sees `RemoteKeyEntity`. Tests written for both the mediator (8 cases) and the mapper (7 cases).
+
+**My role — key design decisions:**
+
+- **TransactionLocalDataSource as single DB gateway:** I challenged the mediator having direct DAO access — it gave the mediator more operations than it needed and knowledge of the DB schema. I proposed a `TransactionLocalDataSource` facade that exposes only what each layer actually needs.
+- **PaginationState over RemoteKeyEntity:** I pushed for the mediator not to receive `RemoteKeyEntity` at all. The local data source maps the entity to a purpose-built `PaginationState(seed, nextPage)` — a network concept, not a DB concept.
+- **MAX_PAGE stays in the mediator:** I decided that `MAX_PAGE` is an API contract, not a storage concern. The mediator owns pagination termination logic.
+- **Asymmetry accepted:** I considered adding `TransactionRemoteDataSource` to mirror `TransactionLocalDataSource`, but decided it was premature abstraction for one endpoint in a 2-day exercise.
+- **`TransactionLocalDataSourceImpl` not unit tested:** Testing its atomicity requires a real Room database. Skipped for now — Robolectric + in-memory Room is a noted polish step if time allows.
+- **`runInTransaction` callback removed:** Initially injected as a function for testability. Removed once the mediator was fully decoupled — the impl owns the database and can call `withTransaction` directly.
+
 ---
 
 ## Part 2 — Presentation Answers
