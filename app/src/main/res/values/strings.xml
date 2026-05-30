@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Transaction Viewer</string>
+    <string name="title_transactions">Transactions</string>
+    <string name="error_something_went_wrong">Something went wrong</string>
+    <string name="error_failed_to_load_more">Failed to load more</string>
+    <string name="label_retry">Retry</string>
+    <string name="label_settled_at_empty">—</string>
 </resources>

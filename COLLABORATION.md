@@ -164,6 +164,17 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 
 - **Dropped `TransactionUiState`:** The ROADMAP called for a separate `StateFlow<TransactionUiState>`. I challenged whether it was needed given Paging 3's built-in load state. `LazyPagingItems.loadState` already exposes loading, error, and end-of-pagination states — all derived from the same paging stream the ViewModel owns. A parallel `StateFlow` would duplicate that and risk the two streams drifting out of sync, which would actually break single source of truth rather than enforce it. The ViewModel is still the single source of truth: the screen derives all state — items and load state — from the one flow it exposes.
 
+### `feat: add TransactionListScreen with Compose UI`
+
+**What was done:** `TransactionListScreen` with `collectAsLazyPagingItems()`, full load state handling (refresh loading/error, append loading/error, retry). `AppListItem` generic component in `ui/components/` — takes strings and colors, knows nothing about the domain. `TransactionItem` private mapper in the screen file translates `Transaction` → `AppListItem`. `AmountFormatter` and `DateFormatter` utilities in `ui/utils/` as classes with companion objects. `MainActivity` wired to the screen with a `TopAppBar`. All hardcoded strings moved to `strings.xml`. Credit colour named in `Color.kt`.
+
+**My role — key design decisions:**
+
+- **Generic `AppListItem` in `ui/components/`:** I proposed a reusable component that accepts plain strings and colours rather than a domain-specific `TransactionItem`. The domain mapping stays in a private function in the screen file, co-located with its only consumer. Future list screens can reuse `AppListItem` with different configs.
+- **No hardcoded strings or colours in code:** Established as a general rule — all string literals go to `strings.xml` via `stringResource`, all colour literals go to `Color.kt` with named constants.
+- **`DateFormatter` and `AmountFormatter` as classes with companion objects:** Format strings and timezone identifier extracted as `private const val`. Output locale uses `Locale.getDefault()` for localised month names; input parsing uses `Locale.US` for stable ISO 8601 parsing. `formatSettledAt` returns nullable String — null handled at the composable call site with `stringResource`, not inside the formatter.
+- **`MainActivity` stays at root:** Challenged whether it should move to `ui/`. Decision: `MainActivity` is an Android system entry point, not a UI component — it interacts with the OS in ways that go beyond the `ui/` package contract.
+
 ---
 
 ## Part 2 — Presentation Answers
