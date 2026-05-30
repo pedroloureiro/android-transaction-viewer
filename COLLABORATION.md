@@ -78,9 +78,25 @@ AI explored several options for a session reset (hidden long-press, logout scree
 
 *(Updated before each commit)*
 
-| Commit | Description | AI contribution |
-|---|---|---|
-| feat: initialise build configuration and project dependencies | All library versions, plugin setup, gradle.properties fix for KSP + AGP 9.x compatibility | Version lookup (with correction — initial estimates were wrong on KSP, Retrofit, Room, OkHttp, Koin, Lifecycle); build error diagnosis |
+### `feat: initialise build configuration and project dependencies`
+
+**What was done:** Added all library dependencies and plugin configuration to `libs.versions.toml`, `build.gradle.kts` (root and app), and `gradle.properties`.
+
+**My role:** Defined the full technology stack upfront during the grill session — Koin, Retrofit + OkHttp + Kotlin Serialization, Room, Paging 3, and their test counterparts. Explicitly asked AI to verify version compatibility rather than accepting its initial estimates.
+
+**Where I challenged AI:**
+
+- **Version accuracy:** AI produced initial version estimates for several libraries without verifying them. I questioned whether they were correct and up to date. AI then ran a proper lookup and found significant errors in its own estimates: KSP was wrong (`1.0.29` does not exist for Kotlin 2.2.10 — the correct version is `2.2.10-2.0.2`), Retrofit had a major version bump to 3.0.0, Room was at 2.8.4 not 2.6.1, and the JakeWharton Retrofit serialization converter was archived in March 2024 and should not be used.
+
+- **Retrofit converter choice:** AI initially reached for the JakeWharton converter out of habit. I had AI verify, and it confirmed the Square-maintained `converter-kotlinx-serialization` at version 3.0.0 is now the correct choice.
+
+**Build issues encountered and resolved:**
+
+1. `kotlin.android` plugin conflict — AGP 9.x registers the Kotlin extension internally; applying `kotlin.android` explicitly caused a "extension already registered" error. Removed.
+2. `kotlinOptions` block — only available when `kotlin.android` is explicitly applied. Removed; JVM target is already covered by `compileOptions`.
+3. KSP source set conflict — KSP tries to register generated sources via the Kotlin source sets DSL, which AGP 9.x "built-in Kotlin" disallows by default. Fixed with `android.disallowKotlinSourceSets=false` in `gradle.properties`, as directed by AGP's own error output.
+
+**Final state:** Clean `assembleDebug` build, all 37 tasks executed successfully.
 
 ---
 
