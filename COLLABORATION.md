@@ -98,6 +98,21 @@ AI explored several options for a session reset (hidden long-press, logout scree
 
 **Final state:** Clean `assembleDebug` build, all 37 tasks executed successfully.
 
+### `feat: add domain layer with Transaction model, use case, and repository interface`
+
+**What was done:** Created the full domain layer — `Transaction`, `Amount`, `Initiator`, `BankAccount`, `TransactionSide`, `TransactionStatus` models; `TransactionRepository` interface; `GetTransactionsUseCase`; and `GetTransactionsUseCaseTest`.
+
+**My role:** Defined the scope of the domain layer during the grill session — pure Kotlin, no Android framework dependencies, `TransactionSide` and `TransactionStatus` as typed enums rather than raw strings, full model covering all API fields not just the ones displayed.
+
+**Style decision:** I specified that interfaces and their implementations should live in the same file. `TransactionRepository` holds only the interface for now; its implementation will be added to the same file in Task 6.
+
+**Testing decision — use case test deleted:**
+AI initially wrote a `GetTransactionsUseCaseTest` that verified `invoke()` delegates to the repository and returns its flow. I challenged whether this was worth keeping at all. The use case is a single line of delegation — no branching, no transformation, no error handling. The test was asserting that MockK records a method call correctly, not that any business logic behaves correctly.
+
+Decision: delete the test. If `GetTransactionsUseCase` gains real logic in the future, that is the moment to write tests — not preemptively for a delegation that has nothing to fail.
+
+Test effort is concentrated in `TransactionRemoteMediator` where there are real branches, error paths, and state transitions that can go wrong in non-obvious ways. That is a more honest and defensible testing strategy than spreading coverage evenly across all classes regardless of their complexity.
+
 ---
 
 ## Part 2 — Presentation Answers
