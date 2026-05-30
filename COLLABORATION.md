@@ -156,6 +156,14 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 - **DB name as `private const val` in `AppDatabase.companion`:** I challenged the DB name living in the DI module. The name is schema configuration — it belongs next to the schema definition, not in the wiring layer. A companion factory `AppDatabase.create(context)` co-locates the name with the class. Atomicity is unaffected: `withTransaction` governs that, not how the instance is constructed.
 - **Separate modules per concern:** I challenged collapsing repository and use case into a single `AppModule`. The existing pattern (separate file per module) should be consistent — `RepositoryModule` and `UseCaseModule` are distinct concerns with distinct future growth paths.
 
+### `feat: add TransactionListViewModel with Paging 3 integration`
+
+**What was done:** `TransactionListViewModel` exposes a single `Flow<PagingData<Transaction>>` via `cachedIn(viewModelScope)`. `ViewModelModule` registers it with Koin. `TransactionViewerApplication` updated to include the new module.
+
+**My role — key design decision:**
+
+- **Dropped `TransactionUiState`:** The ROADMAP called for a separate `StateFlow<TransactionUiState>`. I challenged whether it was needed given Paging 3's built-in load state. `LazyPagingItems.loadState` already exposes loading, error, and end-of-pagination states — all derived from the same paging stream the ViewModel owns. A parallel `StateFlow` would duplicate that and risk the two streams drifting out of sync, which would actually break single source of truth rather than enforce it. The ViewModel is still the single source of truth: the screen derives all state — items and load state — from the one flow it exposes.
+
 ---
 
 ## Part 2 — Presentation Answers
