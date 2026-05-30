@@ -100,6 +100,12 @@ Also enable KSP plugin and Kotlin Serialization plugin in `build.gradle.kts`.
   - End condition: `nextPage > MAX_PAGE` (10,000)
   - Returns `MediatorResult.Error` on network failure
 
+**Tests (`TransactionMapperTest`):**
+- `toEntity()` maps all fields correctly including nullable initiator
+- `toDomain()` parses valid side and status strings to enums
+- `toDomain()` with unknown side string throws `IllegalArgumentException`
+- `toDomain()` with unknown status string throws `IllegalArgumentException`
+
 **Tests (`TransactionRemoteMediatorTest`):**
 - REFRESH clears DB and persists seed from first response
 - APPEND uses persisted seed and increments page
