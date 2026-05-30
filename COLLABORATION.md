@@ -113,6 +113,14 @@ Decision: delete the test. If `GetTransactionsUseCase` gains real logic in the f
 
 Test effort is concentrated in `TransactionRemoteMediator` where there are real branches, error paths, and state transitions that can go wrong in non-obvious ways. That is a more honest and defensible testing strategy than spreading coverage evenly across all classes regardless of their complexity.
 
+### `feat: add Room database with transaction and remote key entities`
+
+**What was done:** Created `TransactionEntity` with `@Embedded` for `AmountEmbedded`, `InitiatorEmbedded?`, and `BankAccountEmbedded` using explicit column prefixes to avoid naming conflicts. `RemoteKeyEntity` uses a single fixed-ID row to store the session seed and next page. `TransactionDao` and `RemoteKeyDao` cover insert, query, and clear operations. `AppDatabase` wires both entities and DAOs.
+
+**My role:** Flagged that `RemoteKeyDao.get()` may be unused once the full wiring is in place — added a `// TODO: remove if unused` comment rather than deleting it prematurely.
+
+**AI contribution:** Generated all Room boilerplate. Used prefixed `@Embedded` fields for all nested types (`amount_`, `initiator_`, `bank_account_`) to prevent column name collisions with `id` shared across embedded types.
+
 ---
 
 ## Part 2 — Presentation Answers
