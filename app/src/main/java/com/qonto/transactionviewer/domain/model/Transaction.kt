@@ -16,3 +16,22 @@ data class Transaction(
     val initiator: Initiator?,
     val bankAccount: BankAccount,
 )
+
+data class Amount(
+    val value: String,
+    val currency: String,
+)
+
+data class Initiator(
+    val id: String,
+    val fullName: String,
+)
+
+data class BankAccount(
+    val id: String,
+    val name: String,
+)
+
+enum class TransactionSide { CREDIT, DEBIT }
+
+enum class TransactionStatus { COMPLETED, PENDING, DECLINED }

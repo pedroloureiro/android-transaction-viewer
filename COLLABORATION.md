@@ -121,6 +121,18 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 
 **AI contribution:** Generated all Room boilerplate. Used prefixed `@Embedded` fields for all nested types (`amount_`, `initiator_`, `bank_account_`) to prevent column name collisions with `id` shared across embedded types.
 
+### `refactor: consolidate domain model types into Transaction.kt`
+
+**What was done:** Merged `Amount`, `Initiator`, `BankAccount`, `TransactionSide`, and `TransactionStatus` into `Transaction.kt`. All five types are only referenced by `Transaction` — they have no standalone identity that justifies separate files.
+
+**My role:** Spotted the inconsistency with the DTO file (which already consolidated all related types) and applied the same rule to the domain model.
+
+---
+
+### `feat: add Retrofit service, response DTOs, and domain mappers`
+
+**What was done:** All DTOs consolidated in one file (`TransactionResponseDto.kt`). `TransactionService` defines the Retrofit interface. `TransactionMapper` provides `TransactionDto.toEntity()` and `TransactionEntity.toDomain()` as extension functions.
+
 ---
 
 ## Part 2 — Presentation Answers
