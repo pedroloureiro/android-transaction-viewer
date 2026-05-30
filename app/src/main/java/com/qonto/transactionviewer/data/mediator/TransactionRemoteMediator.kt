@@ -4,7 +4,7 @@ import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
-import com.qonto.transactionviewer.data.local.TransactionLocalDataSource
+import com.qonto.transactionviewer.data.local.datasource.TransactionLocalDataSource
 import com.qonto.transactionviewer.data.local.entity.TransactionEntity
 import com.qonto.transactionviewer.data.remote.mapper.toEntity
 import com.qonto.transactionviewer.data.remote.service.TransactionService

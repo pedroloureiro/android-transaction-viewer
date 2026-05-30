@@ -146,6 +146,16 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 - **`TransactionLocalDataSourceImpl` not unit tested:** Testing its atomicity requires a real Room database. Skipped for now — Robolectric + in-memory Room is a noted polish step if time allows.
 - **`runInTransaction` callback removed:** Initially injected as a function for testability. Removed once the mediator was fully decoupled — the impl owns the database and can call `withTransaction` directly.
 
+### `feat: add TransactionRepositoryImpl, Koin modules, and Application class`
+
+**What was done:** `TransactionRepositoryImpl` added to `TransactionRepository.kt` (interface and impl co-located per project convention). Koin wiring split across four modules: `NetworkModule`, `DatabaseModule`, `RepositoryModule`, `UseCaseModule`. `TransactionViewerApplication` bootstraps Koin on startup. `AndroidManifest.xml` registers the Application class and INTERNET permission. `BASE_URL` moved to `gradle.properties` and surfaced via `BuildConfig` — no hardcoded URL in code or build scripts.
+
+**My role — key design decisions:**
+
+- **BASE_URL in `gradle.properties` via `BuildConfig`:** I rejected hardcoding the URL in `build.gradle.kts` or the DI module. `gradle.properties` is the right home for environment config; `BuildConfig` is the compile-time bridge. The setup is one step away from supporting divergent dev/prod URLs via product flavors — without adding that complexity now.
+- **DB name as `private const val` in `AppDatabase.companion`:** I challenged the DB name living in the DI module. The name is schema configuration — it belongs next to the schema definition, not in the wiring layer. A companion factory `AppDatabase.create(context)` co-locates the name with the class. Atomicity is unaffected: `withTransaction` governs that, not how the instance is constructed.
+- **Separate modules per concern:** I challenged collapsing repository and use case into a single `AppModule`. The existing pattern (separate file per module) should be consistent — `RepositoryModule` and `UseCaseModule` are distinct concerns with distinct future growth paths.
+
 ---
 
 ## Part 2 — Presentation Answers

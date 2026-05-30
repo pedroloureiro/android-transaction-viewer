@@ -1,4 +1,4 @@
-package com.qonto.transactionviewer.data.local
+package com.qonto.transactionviewer.data.local.datasource
 
 import androidx.paging.PagingSource
 import androidx.room.withTransaction
