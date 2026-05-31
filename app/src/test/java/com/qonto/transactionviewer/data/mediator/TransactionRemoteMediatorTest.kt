@@ -10,8 +10,6 @@ import com.qonto.transactionviewer.data.local.model.PaginationState
 import com.qonto.transactionviewer.data.remote.dto.PaginationInfoDto
 import com.qonto.transactionviewer.data.remote.dto.TransactionResponseDto
 import com.qonto.transactionviewer.data.remote.service.TransactionService
-import com.qonto.transactionviewer.data.mediator.TransactionRemoteMediator.Companion.MAX_PAGE
-import com.qonto.transactionviewer.data.mediator.TransactionRemoteMediator.Companion.PAGE_SIZE
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -23,6 +21,11 @@ import java.io.IOException
 
 @OptIn(ExperimentalPagingApi::class)
 class TransactionRemoteMediatorTest {
+
+    private companion object {
+        const val PAGE_SIZE = 20
+        const val MAX_PAGE = 10_000
+    }
 
     private val service = mockk<TransactionService>()
     private val localDataSource = mockk<TransactionLocalDataSource>(relaxed = true)
@@ -72,7 +75,7 @@ class TransactionRemoteMediatorTest {
 
         assertTrue(result is androidx.paging.RemoteMediator.MediatorResult.Success)
         assertFalse((result as androidx.paging.RemoteMediator.MediatorResult.Success).endOfPaginationReached)
-        coVerify { localDataSource.append(emptyList(), "seed", 4) }
+        coVerify { localDataSource.append(emptyList(), "seed", 3) }
     }
 
     @Test

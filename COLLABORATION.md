@@ -175,6 +175,16 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 - **`DateFormatter` and `AmountFormatter` as classes with companion objects:** Format strings and timezone identifier extracted as `private const val`. Output locale uses `Locale.getDefault()` for localised month names; input parsing uses `Locale.US` for stable ISO 8601 parsing. `formatSettledAt` returns nullable String — null handled at the composable call site with `stringResource`, not inside the formatter.
 - **`MainActivity` stays at root:** Challenged whether it should move to `ui/`. Decision: `MainActivity` is an Android system entry point, not a UI component — it interacts with the OS in ways that go beyond the `ui/` package contract.
 
+### `fix: stabilise paging and list rendering`
+
+**What was done:** Fixed pagination stopping after two pages and several list rendering issues surfaced while testing scroll.
+
+- `enablePlaceholders = true` with `initialLoadSize = pageSize` — keeps stable item positions (no scroll jump on the generation swap each Room write triggers) while still arming the RemoteMediator APPEND past page 2.
+- `AppListItemPlaceholder` — fixed-height skeleton mirroring the row layout, so loading a placeholder no longer changes row height and nudges the scroll.
+- `TransactionListScreen` takes the Scaffold `contentPadding` and applies it to the `LazyColumn` instead of padding a wrapping Box, fixing the first item sitting under the top bar.
+
+**My role:** Drove the diagnosis through grill sessions. Key calls: accepted the one-frame cold-start skeleton flash as inherent to RemoteMediator rather than chase it (the only mitigation, a larger `initialLoadSize`, broke pagination); kept the bottom loading footer since placeholders cover local DB paging, not the remote end-of-list fetch; kept the skeleton localised rather than build a generic `Modifier.skeleton` for a single call site.
+
 ---
 
 ## Part 2 — Presentation Answers

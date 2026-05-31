@@ -22,9 +22,19 @@ class TransactionRepositoryImpl(
     private val service: TransactionService,
     private val localDataSource: TransactionLocalDataSource,
 ) : TransactionRepository {
+
+    companion object {
+        private const val PAGE_SIZE = 20
+        private const val PREFETCH_DISTANCE = 5
+    }
     override fun getTransactions(): Flow<PagingData<Transaction>> =
         Pager(
-            config = PagingConfig(pageSize = TransactionRemoteMediator.PAGE_SIZE),
+            config = PagingConfig(
+                pageSize = PAGE_SIZE,
+                initialLoadSize = PAGE_SIZE,
+                prefetchDistance = PREFETCH_DISTANCE,
+                enablePlaceholders = true,
+            ),
             remoteMediator = TransactionRemoteMediator(service, localDataSource),
             pagingSourceFactory = { localDataSource.pagingSource() },
         ).flow.map { pagingData -> pagingData.map { it.toDomain() } }

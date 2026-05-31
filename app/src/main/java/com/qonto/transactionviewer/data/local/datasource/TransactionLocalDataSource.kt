@@ -10,7 +10,7 @@ import com.qonto.transactionviewer.data.local.model.PaginationState
 interface TransactionLocalDataSource {
     suspend fun getPaginationState(): PaginationState?
     suspend fun refresh(transactions: List<TransactionEntity>, seed: String)
-    suspend fun append(transactions: List<TransactionEntity>, seed: String, nextPage: Int)
+    suspend fun append(transactions: List<TransactionEntity>, seed: String, page: Int)
     fun pagingSource(): PagingSource<Int, TransactionEntity>
 }
 
@@ -32,10 +32,10 @@ class TransactionLocalDataSourceImpl(
         }
     }
 
-    override suspend fun append(transactions: List<TransactionEntity>, seed: String, nextPage: Int) {
+    override suspend fun append(transactions: List<TransactionEntity>, seed: String, page: Int) {
         database.withTransaction {
             database.transactionDao().insertAll(transactions)
-            database.remoteKeyDao().insert(RemoteKeyEntity(seed = seed, nextPage = nextPage))
+            database.remoteKeyDao().insert(RemoteKeyEntity(seed = seed, nextPage = page + 1))
         }
     }
 

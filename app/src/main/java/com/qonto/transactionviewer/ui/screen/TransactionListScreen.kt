@@ -3,6 +3,7 @@ package com.qonto.transactionviewer.ui.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +31,7 @@ import com.qonto.transactionviewer.R
 import com.qonto.transactionviewer.domain.model.Transaction
 import com.qonto.transactionviewer.domain.model.TransactionSide
 import com.qonto.transactionviewer.ui.components.AppListItem
+import com.qonto.transactionviewer.ui.components.AppListItemPlaceholder
 import com.qonto.transactionviewer.ui.utils.AmountFormatter
 import com.qonto.transactionviewer.ui.utils.DateFormatter
 import com.qonto.transactionviewer.ui.viewmodel.TransactionListViewModel
@@ -37,6 +39,7 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun TransactionListScreen(
+    contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
     viewModel: TransactionListViewModel = koinViewModel(),
 ) {
@@ -50,22 +53,34 @@ fun TransactionListScreen(
                 onRetry = pagingItems::retry,
                 modifier = Modifier.align(Alignment.Center),
             )
-            is LoadState.NotLoading -> TransactionList(pagingItems = pagingItems)
+            is LoadState.NotLoading -> TransactionList(
+                pagingItems = pagingItems,
+                contentPadding = contentPadding,
+            )
         }
     }
 }
 
 @Composable
-private fun TransactionList(pagingItems: LazyPagingItems<Transaction>) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+private fun TransactionList(
+    pagingItems: LazyPagingItems<Transaction>,
+    contentPadding: PaddingValues,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = contentPadding,
+    ) {
         items(
             count = pagingItems.itemCount,
             key = pagingItems.itemKey { it.id },
         ) { index ->
-            pagingItems[index]?.let { transaction ->
+            val transaction = pagingItems[index]
+            if (transaction != null) {
                 TransactionItem(transaction = transaction)
-                HorizontalDivider()
+            } else {
+                AppListItemPlaceholder()
             }
+            HorizontalDivider()
         }
         when (val append = pagingItems.loadState.append) {
             is LoadState.Loading -> item { AppendLoadingItem() }

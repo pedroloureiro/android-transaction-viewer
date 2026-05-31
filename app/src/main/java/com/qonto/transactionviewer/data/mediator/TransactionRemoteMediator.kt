@@ -37,6 +37,7 @@ class TransactionRemoteMediator(
             page = 1,
             seed = existingSeed,
         )
+        //TODO: deal with response error
         localDataSource.refresh(
             transactions = response.results.map { it.toEntity() },
             seed = existingSeed ?: response.info.seed,
@@ -57,16 +58,16 @@ class TransactionRemoteMediator(
             page = paginationState.nextPage,
             seed = paginationState.seed,
         )
+        //TODO: deal with response error
         localDataSource.append(
             transactions = response.results.map { it.toEntity() },
             seed = paginationState.seed,
-            nextPage = paginationState.nextPage + 1,
+            page = paginationState.nextPage,
         )
         return MediatorResult.Success(endOfPaginationReached = false)
     }
 
     companion object {
-        const val MAX_PAGE = 10_000
-        const val PAGE_SIZE = 20
+        private const val MAX_PAGE = 10_000
     }
 }
