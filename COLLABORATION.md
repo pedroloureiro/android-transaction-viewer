@@ -185,6 +185,12 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 
 **My role:** Drove the diagnosis through grill sessions. Key calls: accepted the one-frame cold-start skeleton flash as inherent to RemoteMediator rather than chase it (the only mitigation, a larger `initialLoadSize`, broke pagination); kept the bottom loading footer since placeholders cover local DB paging, not the remote end-of-list fetch; kept the skeleton localised rather than build a generic `Modifier.skeleton` for a single call site.
 
+### `refactor: centralise error handling and simplify data layer`
+
+**What was done:** Introduced `safeApiCall` top-level function and `ApiError` sealed class. Removed `TransactionLocalDataSource`, `TransactionRemoteDataSource`, and `PaginationState`. `TransactionRepositoryImpl` now owns `refresh`/`append` logic directly, accessing the database via `AppDatabase`. `TransactionRemoteMediator` reduced to a callback dispatcher. `Throwable?.toUserMessage()` composable extension centralises error string resolution for all screens.
+
+**My role:** Drove the full redesign through a grill session. Key calls: rejected a Retrofit `CallAdapter` as overkill for one endpoint; rejected a static `ApiErrorHandler` in favour of a top-level `safeApiCall`; chose to keep `AppDatabase` as the direct DB access point rather than a scoped interface for this scope.
+
 ---
 
 ## Part 2 — Presentation Answers

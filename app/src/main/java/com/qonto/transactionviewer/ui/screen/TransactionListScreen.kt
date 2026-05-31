@@ -34,6 +34,7 @@ import com.qonto.transactionviewer.ui.components.AppListItem
 import com.qonto.transactionviewer.ui.components.AppListItemPlaceholder
 import com.qonto.transactionviewer.ui.utils.AmountFormatter
 import com.qonto.transactionviewer.ui.utils.DateFormatter
+import com.qonto.transactionviewer.ui.utils.toUserMessage
 import com.qonto.transactionviewer.ui.viewmodel.TransactionListViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -49,7 +50,7 @@ fun TransactionListScreen(
         when (val refresh = pagingItems.loadState.refresh) {
             is LoadState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             is LoadState.Error -> ErrorView(
-                message = refresh.error.localizedMessage ?: stringResource(R.string.error_something_went_wrong),
+                message = refresh.error.toUserMessage(),
                 onRetry = pagingItems::retry,
                 modifier = Modifier.align(Alignment.Center),
             )
@@ -86,7 +87,7 @@ private fun TransactionList(
             is LoadState.Loading -> item { AppendLoadingItem() }
             is LoadState.Error -> item {
                 AppendErrorItem(
-                    message = append.error.localizedMessage ?: stringResource(R.string.error_failed_to_load_more),
+                    message = append.error.toUserMessage(R.string.error_failed_to_load_more),
                     onRetry = pagingItems::retry,
                 )
             }

@@ -87,6 +87,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.paging.testing)
+    testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.room.testing)
     testImplementation(libs.koin.test)
     testImplementation(libs.koin.test.junit4)
