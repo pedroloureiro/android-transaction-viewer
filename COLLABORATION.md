@@ -196,6 +196,17 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 - **Snackbar with Retry for PTR errors:** I chose option B (Snackbar) over option A (inline banner) — less disruptive, Retry is still reachable.
 - **`loadState.mediator?.refresh` not `loadState.refresh`:** Diagnosed and fixed a PTR overlay flashing on startup. `loadState.refresh` is a combined mediator+source state; on startup the source reloads after the DB clear, which briefly shows `Loading` and triggers the overlay. Scoping to `loadState.mediator?.refresh` isolates the network-only state.
 
+### `test: add SafeApiCallTest, TransactionRepositoryImplTest, and gap coverage`
+
+**What was done:** Agreed testing strategy through a grill session: mediator tests kept (routing not covered by direct repo tests), no ViewModel tests (single-line delegation), `safeApiCall` gets its own isolated test, repo's `refresh`/`append` made `internal` and tested directly with MockK. `SafeApiCallTest` covers all 5 exception branches. `TransactionRepositoryImplTest` covers refresh/append success and error paths, MAX_PAGE boundary, and guard conditions. Two gap tests added after review: `initialize()` on the mediator, and the exact `MAX_PAGE = 10_000` boundary (not just `10_001`).
+
+**My role — key decisions:**
+
+- **No ViewModel tests:** I agreed with AI's pushback — single-line delegation, no logic to test.
+- **`internal` over reflection hacks:** I accepted making `refresh`/`append` internal after AI surfaced that the alternative (testing through the full paging flow) requires Robolectric and is significantly more complex.
+- **`withTransaction` mock via `secondArg`:** K2 compiles suspend lambdas as coroutine state machines that don't implement `Function1`, breaking MockK's standard cast. I found the fix — `secondArg<suspend () -> Unit>().invoke()` correctly extracts and invokes the block from MockK's static intercept of the extension function.
+- **MAX_PAGE boundary test:** I spotted the gap — the existing test only covered `10_001`, not the allowed boundary `10_000`.
+
 ### `refactor: centralise error handling and simplify data layer`
 
 **What was done:** Introduced `safeApiCall` top-level function and `ApiError` sealed class. Removed `TransactionLocalDataSource`, `TransactionRemoteDataSource`, and `PaginationState`. `TransactionRepositoryImpl` now owns `refresh`/`append` logic directly, accessing the database via `AppDatabase`. `TransactionRemoteMediator` reduced to a callback dispatcher. `Throwable?.toUserMessage()` composable extension centralises error string resolution for all screens.

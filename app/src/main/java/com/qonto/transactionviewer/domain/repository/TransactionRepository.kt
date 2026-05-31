@@ -51,7 +51,7 @@ class TransactionRepositoryImpl(
         ).flow.map { pagingData -> pagingData.map { it.toDomain() } }
     }
 
-    private suspend fun refresh(state: PagingState<Int, TransactionEntity>): MediatorResult {
+    internal suspend fun refresh(state: PagingState<Int, TransactionEntity>): MediatorResult {
         return safeApiCall { service.getTransactions(results = state.config.pageSize, page = 1, seed = null) }
             .fold(
                 onSuccess = { response ->
@@ -67,7 +67,7 @@ class TransactionRepositoryImpl(
             )
     }
 
-    private suspend fun append(state: PagingState<Int, TransactionEntity>): MediatorResult {
+    internal suspend fun append(state: PagingState<Int, TransactionEntity>): MediatorResult {
         val remoteKey = database.remoteKeyDao().get()
             ?: return MediatorResult.Success(endOfPaginationReached = true)
 

@@ -4,6 +4,7 @@ import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingConfig
 import androidx.paging.PagingState
+import androidx.paging.RemoteMediator
 import androidx.paging.RemoteMediator.MediatorResult
 import com.qonto.transactionviewer.data.local.entity.TransactionEntity
 import kotlinx.coroutines.test.runTest
@@ -27,6 +28,14 @@ class TransactionRemoteMediatorTest {
         onRefresh: suspend (PagingState<Int, TransactionEntity>) -> MediatorResult = { MediatorResult.Success(endOfPaginationReached = false) },
         onAppend: suspend (PagingState<Int, TransactionEntity>) -> MediatorResult = { MediatorResult.Success(endOfPaginationReached = false) },
     ) = TransactionRemoteMediator(onInitialize = onInitialize, onRefresh = onRefresh, onAppend = onAppend)
+
+    @Test
+    fun `initialize invokes onInitialize and returns LAUNCH_INITIAL_REFRESH`() = runTest {
+        var called = false
+        val result = mediator(onInitialize = { called = true }).initialize()
+        assertTrue(called)
+        assertEquals(RemoteMediator.InitializeAction.LAUNCH_INITIAL_REFRESH, result)
+    }
 
     @Test
     fun `PREPEND always returns endOfPaginationReached`() = runTest {
