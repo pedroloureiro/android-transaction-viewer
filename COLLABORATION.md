@@ -185,6 +185,17 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 
 **My role:** Drove the diagnosis through grill sessions. Key calls: accepted the one-frame cold-start skeleton flash as inherent to RemoteMediator rather than chase it (the only mitigation, a larger `initialLoadSize`, broke pagination); kept the bottom loading footer since placeholders cover local DB paging, not the remote end-of-list fetch; kept the skeleton localised rather than build a generic `Modifier.skeleton` for a single call site.
 
+### `feat: add pull-to-refresh, seed renewal on startup, and startup UX`
+
+**What was done:** Seed is now `null` on every REFRESH — fresh data on every cold start and every pull-to-refresh. `TransactionRemoteMediator` gains an `onInitialize` callback; `TransactionRepositoryImpl` uses it to clear both `transactionDao` and `remoteKeyDao` before the first load, ensuring `itemCount = 0` on startup so the full-screen spinner is always shown rather than a PTR overlay flash over stale data. `PullToRefreshBox` replaces the outer `Box` for PTR; `isRefreshing` is derived from `loadState.mediator?.refresh` (not the combined refresh state) to prevent the PTR overlay from appearing on cold start. PTR errors are shown via a `Snackbar` with a Retry action; cold-start errors keep the full-screen `ErrorView`. `PREFETCH_DISTANCE` reduced to 2. `anchorPosition == null` guard in `append()` prevents Paging 3 from firing a speculative APPEND before the user has scrolled. `ApiError`, `safeApiCall`, and `Throwable?.toUserMessage()` extension also introduced in this batch. `error_no_internet` and `error_server` strings added.
+
+**My role — key decisions:**
+
+- **Seed always null on REFRESH:** I changed direction mid-session — initially treated seed as a permanent session identifier (see previous session notes), then decided a changing list better demonstrates the live-updating nature of the app. AI deferred.
+- **Full-screen spinner on startup, PTR overlay on pull:** I specified these as separate UX states. AI proposed a single overlay; I drew the distinction and AI implemented it.
+- **Snackbar with Retry for PTR errors:** I chose option B (Snackbar) over option A (inline banner) — less disruptive, Retry is still reachable.
+- **`loadState.mediator?.refresh` not `loadState.refresh`:** Diagnosed and fixed a PTR overlay flashing on startup. `loadState.refresh` is a combined mediator+source state; on startup the source reloads after the DB clear, which briefly shows `Loading` and triggers the overlay. Scoping to `loadState.mediator?.refresh` isolates the network-only state.
+
 ### `refactor: centralise error handling and simplify data layer`
 
 **What was done:** Introduced `safeApiCall` top-level function and `ApiError` sealed class. Removed `TransactionLocalDataSource`, `TransactionRemoteDataSource`, and `PaginationState`. `TransactionRepositoryImpl` now owns `refresh`/`append` logic directly, accessing the database via `AppDatabase`. `TransactionRemoteMediator` reduced to a callback dispatcher. `Throwable?.toUserMessage()` composable extension centralises error string resolution for all screens.

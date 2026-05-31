@@ -23,9 +23,10 @@ class TransactionRemoteMediatorTest {
     )
 
     private fun mediator(
+        onInitialize: suspend () -> Unit = {},
         onRefresh: suspend (PagingState<Int, TransactionEntity>) -> MediatorResult = { MediatorResult.Success(endOfPaginationReached = false) },
         onAppend: suspend (PagingState<Int, TransactionEntity>) -> MediatorResult = { MediatorResult.Success(endOfPaginationReached = false) },
-    ) = TransactionRemoteMediator(onRefresh = onRefresh, onAppend = onAppend)
+    ) = TransactionRemoteMediator(onInitialize = onInitialize, onRefresh = onRefresh, onAppend = onAppend)
 
     @Test
     fun `PREPEND always returns endOfPaginationReached`() = runTest {

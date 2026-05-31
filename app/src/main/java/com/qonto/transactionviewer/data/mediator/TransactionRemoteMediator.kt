@@ -8,9 +8,15 @@ import com.qonto.transactionviewer.data.local.entity.TransactionEntity
 
 @OptIn(ExperimentalPagingApi::class)
 class TransactionRemoteMediator(
+    private val onInitialize: suspend () -> Unit,
     private val onRefresh: suspend (PagingState<Int, TransactionEntity>) -> MediatorResult,
     private val onAppend: suspend (PagingState<Int, TransactionEntity>) -> MediatorResult,
 ) : RemoteMediator<Int, TransactionEntity>() {
+
+    override suspend fun initialize(): InitializeAction {
+        onInitialize()
+        return InitializeAction.LAUNCH_INITIAL_REFRESH
+    }
 
     override suspend fun load(
         loadType: LoadType,

@@ -12,16 +12,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import com.qonto.transactionviewer.ui.theme.CreditGreen
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
@@ -32,12 +39,14 @@ import com.qonto.transactionviewer.domain.model.Transaction
 import com.qonto.transactionviewer.domain.model.TransactionSide
 import com.qonto.transactionviewer.ui.components.AppListItem
 import com.qonto.transactionviewer.ui.components.AppListItemPlaceholder
+import com.qonto.transactionviewer.ui.theme.CreditGreen
 import com.qonto.transactionviewer.ui.utils.AmountFormatter
 import com.qonto.transactionviewer.ui.utils.DateFormatter
 import com.qonto.transactionviewer.ui.utils.toUserMessage
 import com.qonto.transactionviewer.ui.viewmodel.TransactionListViewModel
 import org.koin.androidx.compose.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionListScreen(
     contentPadding: PaddingValues,
@@ -45,31 +54,51 @@ fun TransactionListScreen(
     viewModel: TransactionListViewModel = koinViewModel(),
 ) {
     val pagingItems = viewModel.transactions.collectAsLazyPagingItems()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val retryLabel = stringResource(R.string.label_retry)
 
-    Box(modifier = modifier.fillMaxSize()) {
-        when (val refresh = pagingItems.loadState.refresh) {
-            is LoadState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            is LoadState.Error -> ErrorView(
-                message = refresh.error.toUserMessage(),
+    val refreshError = pagingItems.loadState.refresh as? LoadState.Error
+    val ptrErrorMessage = if (refreshError != null && pagingItems.itemCount > 0) {
+        refreshError.error.toUserMessage()
+    } else null
+
+    LaunchedEffect(ptrErrorMessage) {
+        if (ptrErrorMessage != null) {
+            val result = snackbarHostState.showSnackbar(
+                message = ptrErrorMessage,
+                actionLabel = retryLabel,
+                duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed) pagingItems.refresh()
+        }
+    }
+
+    PullToRefreshBox(
+        isRefreshing = pagingItems.loadState.mediator?.refresh is LoadState.Loading && pagingItems.itemCount > 0,
+        onRefresh = pagingItems::refresh,
+        modifier = modifier.padding(contentPadding).fillMaxSize(),
+    ) {
+        when {
+            refreshError != null && pagingItems.itemCount == 0 -> ErrorView(
+                message = refreshError.error.toUserMessage(),
                 onRetry = pagingItems::retry,
                 modifier = Modifier.align(Alignment.Center),
             )
-            is LoadState.NotLoading -> TransactionList(
-                pagingItems = pagingItems,
-                contentPadding = contentPadding,
-            )
+            pagingItems.loadState.refresh is LoadState.Loading && pagingItems.itemCount == 0 ->
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            else -> TransactionList(pagingItems = pagingItems)
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 
 @Composable
-private fun TransactionList(
-    pagingItems: LazyPagingItems<Transaction>,
-    contentPadding: PaddingValues,
-) {
+private fun TransactionList(pagingItems: LazyPagingItems<Transaction>) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding,
+        modifier = Modifier.fillMaxSize()
     ) {
         items(
             count = pagingItems.itemCount,

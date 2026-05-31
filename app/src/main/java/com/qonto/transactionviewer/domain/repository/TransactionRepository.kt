@@ -32,6 +32,10 @@ class TransactionRepositoryImpl(
 
     override fun getTransactions(): Flow<PagingData<Transaction>> {
         val mediator = TransactionRemoteMediator(
+            onInitialize = {
+                database.transactionDao().clearAll()
+                database.remoteKeyDao().clearAll()
+            },
             onRefresh = { state -> refresh(state) },
             onAppend = { state -> append(state) },
         )
@@ -48,15 +52,14 @@ class TransactionRepositoryImpl(
     }
 
     private suspend fun refresh(state: PagingState<Int, TransactionEntity>): MediatorResult {
-        val existingSeed = database.remoteKeyDao().get()?.seed
-        return safeApiCall { service.getTransactions(results = state.config.pageSize, page = 1, seed = existingSeed) }
+        return safeApiCall { service.getTransactions(results = state.config.pageSize, page = 1, seed = null) }
             .fold(
                 onSuccess = { response ->
                     database.withTransaction {
                         database.transactionDao().clearAll()
                         database.transactionDao().insertAll(response.results.map { it.toEntity() })
                         database.remoteKeyDao().clearAll()
-                        database.remoteKeyDao().insert(RemoteKeyEntity(seed = existingSeed ?: response.info.seed, nextPage = 2))
+                        database.remoteKeyDao().insert(RemoteKeyEntity(seed = response.info.seed, nextPage = 2))
                     }
                     MediatorResult.Success(endOfPaginationReached = false)
                 },
@@ -87,7 +90,7 @@ class TransactionRepositoryImpl(
 
     companion object {
         private const val PAGE_SIZE = 20
-        private const val PREFETCH_DISTANCE = 5
+        private const val PREFETCH_DISTANCE = 2
         private const val MAX_PAGE = 10_000
     }
 }
