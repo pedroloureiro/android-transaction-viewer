@@ -2,19 +2,21 @@
 
 ## Architecture Decisions Summary
 
-| Decision | Choice | ADR |
-|---|---|---|
-| DI framework | Koin | [ADR-0001](docs/adr/0001-dependency-injection-koin.md) |
-| Networking | Retrofit + OkHttp + Kotlin Serialization | [ADR-0002](docs/adr/0002-networking-retrofit-okhttp-kotlin-serialization.md) |
-| UI pattern | MVVM + structured `UiState` | [ADR-0003](docs/adr/0003-ui-pattern-mvvm.md) |
-| Session seed | Persistent, never reset in-app | [ADR-0004](docs/adr/0004-seed-as-permanent-session-identifier.md) |
-| Pagination end | `MAX_PAGE = 10_000` per API contract | [ADR-0005](docs/adr/0005-pagination-termination-max-page-contract.md) |
-| Module structure | Single module, layer-first packages | — |
-| Room nested objects | `@Embedded` for amount, initiator, bankAccount | — |
-| Page size | 20 results per request | — |
-| Test scope | `RemoteMediator` + `UseCase` | — |
+| Decision | Planned | Actual | ADR |
+|---|---|---|---|
+| DI framework | Koin | Koin | [ADR-0001](docs/adr/0001-dependency-injection-koin.md) |
+| Networking | Retrofit + OkHttp + Kotlin Serialization | Retrofit + OkHttp + Kotlin Serialization | [ADR-0002](docs/adr/0002-networking-retrofit-okhttp-kotlin-serialization.md) |
+| UI pattern | MVVM + structured `UiState` | MVVM — `UiState` dropped; Paging 3 load state used directly | [ADR-0003](docs/adr/0003-ui-pattern-mvvm.md) |
+| Session seed | Persistent, never reset | Renewed on every REFRESH (startup + PTR) | ~~[ADR-0004](docs/adr/0004-seed-as-permanent-session-identifier.md)~~ — superseded |
+| Pagination end | `MAX_PAGE = 10_000` per API contract | `MAX_PAGE = 10_000` per API contract | [ADR-0005](docs/adr/0005-pagination-termination-max-page-contract.md) |
+| Module structure | Single module, layer-first packages | Single module, layer-first packages | — |
+| Room nested objects | `@Embedded` | `@Embedded` | — |
+| Page size | 20 results per request | 20 results per request | — |
+| Error handling | Not planned | `safeApiCall` + `ApiError` sealed class | — |
+| Data sources | `TransactionLocalDataSource` + `TransactionRemoteDataSource` | Removed — repo accesses DB directly | — |
+| Test scope | `RemoteMediator` + `UseCase` | `SafeApiCall` + `RepositoryImpl` + `RemoteMediator` + Mapper | — |
 
-## Package Structure
+## Package Structure (Actual)
 
 ```
 com.qonto.transactionviewer
@@ -25,16 +27,19 @@ com.qonto.transactionviewer
 │   │   └── database/
 │   ├── remote/
 │   │   ├── dto/
+│   │   ├── error/          ← ApiError sealed class
 │   │   ├── mapper/
 │   │   └── service/
-│   ├── mediator/
-│   └── repository/
+│   └── mediator/           ← callback dispatcher only
 ├── domain/
 │   ├── model/
-│   ├── repository/
-│   └── usecase/
+│   ├── repository/         ← interface + impl co-located
+│   ├── usecase/
+│   └── util/               ← safeApiCall
 └── ui/
+    ├── components/
     ├── screen/
+    ├── utils/              ← formatters, error extensions
     └── viewmodel/
 ```
 
@@ -42,130 +47,120 @@ com.qonto.transactionviewer
 
 ## Tasks
 
-### Task 1 — Project dependencies and build configuration
+### Task 1 — Project dependencies and build configuration ✅
 **Commit:** `feat: initialise build configuration and project dependencies`
 
-Add to `libs.versions.toml` and `build.gradle.kts`:
-- Koin (`koin-android`, `koin-androidx-compose`)
-- Retrofit + OkHttp + logging interceptor
-- Kotlin Serialization plugin + `kotlinx-serialization-json` + Retrofit converter
-- Room (`room-runtime`, `room-ktx`, `room-paging`) + KSP processor
-- Paging 3 (`paging-runtime`, `paging-compose`)
-- Test dependencies: `kotlinx-coroutines-test`, `mockk`, `koin-test`, `room-testing`
-
-Also enable KSP plugin and Kotlin Serialization plugin in `build.gradle.kts`.
+- Koin, Retrofit + OkHttp + Kotlin Serialization, Room + KSP, Paging 3, test dependencies
 
 ---
 
-### Task 2 — Domain layer
+### Task 2 — Domain layer ✅
 **Commit:** `feat: add domain layer with Transaction model, use case, and repository interface`
 
-- `domain/model/Transaction.kt` — pure Kotlin data class (no Android, no serialization annotations)
-- `domain/model/Amount.kt`
-- `domain/repository/TransactionRepository.kt` — interface returning `Flow<PagingData<Transaction>>`
-- `domain/usecase/GetTransactionsUseCase.kt` — delegates to repository, injectable
+- `Transaction`, `Amount`, `Initiator`, `BankAccount`, `TransactionSide`, `TransactionStatus` — all consolidated in `Transaction.kt`
+- `TransactionRepository` interface + `TransactionRepositoryImpl` co-located in same file
+- `GetTransactionsUseCase` — single-line delegation
 
 **Tests:**
-- `GetTransactionsUseCaseTest` — verifies delegation and any transformation logic
+- ~~`GetTransactionsUseCaseTest`~~ — deleted; single-line delegation with no logic, not worth testing
 
 ---
 
-### Task 3 — Room database
+### Task 3 — Room database ✅
 **Commit:** `feat: add Room database with transaction and remote key entities`
 
-- `data/local/entity/TransactionEntity.kt` — mirrors domain model, uses `@Embedded` for `AmountEmbedded`, `InitiatorEmbedded?`, `BankAccountEmbedded`
-- `data/local/entity/RemoteKeyEntity.kt` — stores `nextPage: Int` and `seed: String`
-- `data/local/dao/TransactionDao.kt` — `@Insert`, `@Query`, `@Delete`
-- `data/local/dao/RemoteKeyDao.kt` — `@Insert`, `@Query`, `@Delete`
-- `data/local/database/AppDatabase.kt` — `@Database`, exports schema
+- `TransactionEntity` with `@Embedded` for nested types (prefixed columns)
+- `RemoteKeyEntity` — single fixed-ID row storing seed + nextPage
+- `TransactionDao`, `RemoteKeyDao`, `AppDatabase`
 
 ---
 
-### Task 4 — Network layer
+### Task 4 — Network layer ✅
 **Commit:** `feat: add Retrofit service, response DTOs, and domain mappers`
 
-- `data/remote/dto/TransactionResponseDto.kt` — `@Serializable`, mirrors API shape
-- `data/remote/dto/TransactionDto.kt`, `AmountDto.kt`, `InitiatorDto.kt`, `BankAccountDto.kt`, `PaginationInfoDto.kt`
-- `data/remote/service/TransactionService.kt` — Retrofit interface: `suspend fun getTransactions(results, page, seed?): TransactionResponseDto`
-- `data/remote/mapper/TransactionMapper.kt` — `TransactionDto → Transaction` (domain), `TransactionDto → TransactionEntity`
+- All DTOs consolidated in `TransactionResponseDto.kt`
+- `TransactionService` returns `TransactionResponseDto` directly (not `Response<T>`)
+- `TransactionMapper` — `toEntity()` and `toDomain()` extension functions
 
 ---
 
-### Task 5 — RemoteMediator
-**Commit:** `feat: add TransactionRemoteMediator with seed persistence and pagination`
+### Task 5 — RemoteMediator + Repository ✅
+**Commits:**
+- `feat: add TransactionRemoteMediator, TransactionLocalDataSource, and tests`
+- `refactor: centralise error handling and simplify data layer`
 
-- `data/mediator/TransactionRemoteMediator.kt`
-  - `REFRESH`: clears transactions + remote keys, fetches page 1 with no seed, persists returned seed + `nextPage = 2`
-  - `APPEND`: reads persisted seed + next page from `RemoteKeyDao`, fetches, persists new key
-  - End condition: `nextPage > MAX_PAGE` (10,000)
-  - Returns `MediatorResult.Error` on network failure
+**Planned:**
+- ~~`TransactionLocalDataSource` facade between mediator and DB~~
+- ~~`PaginationState` as mediator-facing type~~
+- ~~`TransactionRemoteDataSource`~~
+- Mediator owning refresh/append logic directly
 
-**Tests (`TransactionMapperTest`):**
-- `toEntity()` maps all fields correctly including nullable initiator
-- `toDomain()` parses valid side and status strings to enums
-- `toDomain()` with unknown side string throws `IllegalArgumentException`
-- `toDomain()` with unknown status string throws `IllegalArgumentException`
-
-**Tests (`TransactionRemoteMediatorTest`):**
-- REFRESH clears DB and persists seed from first response
-- APPEND uses persisted seed and increments page
-- APPEND returns `endOfPaginationReached = true` when `nextPage > MAX_PAGE`
-- REFRESH on network failure returns `MediatorResult.Error`
-- APPEND on network failure returns `MediatorResult.Error`
+**Actual:**
+- `TransactionRemoteMediator` reduced to a thin callback dispatcher (`onInitialize`, `onRefresh`, `onAppend` lambdas)
+- `TransactionRepositoryImpl` owns all pagination logic — `refresh()` and `append()` directly access `AppDatabase`
+- `safeApiCall` top-level function maps all network exceptions to typed `ApiError`
+- `ApiError` sealed class: `NetworkError`, `HttpError(code)`, `UnknownError`
+- Seed is `null` on every REFRESH — fresh data on every cold start and PTR
 
 ---
 
-### Task 6 — Repository implementation and Koin modules
+### Task 6 — Koin DI modules ✅
 **Commit:** `feat: add TransactionRepository implementation and Koin DI modules`
 
-- `data/repository/TransactionRepositoryImpl.kt` — implements domain interface, constructs `Pager` with `RemoteMediator` + `PagingSource` from Room DAO
-- `di/NetworkModule.kt` — OkHttp, Retrofit, `TransactionService`
-- `di/DatabaseModule.kt` — `AppDatabase`, DAOs
-- `di/RepositoryModule.kt` — `TransactionRepositoryImpl` bound to `TransactionRepository`
-- `di/UseCaseModule.kt` — `GetTransactionsUseCase`
-- `di/ViewModelModule.kt` — `TransactionListViewModel`
-- Application class with `startKoin { ... }`
+- `NetworkModule`, `DatabaseModule`, `RepositoryModule`, `UseCaseModule`, `ViewModelModule`
+- `BASE_URL` in `gradle.properties` via `BuildConfig`
+- `AppDatabase.create(context)` factory on companion object
 
 ---
 
-### Task 7 — ViewModel
+### Task 7 — ViewModel ✅
 **Commit:** `feat: add TransactionListViewModel with Paging 3 integration`
 
-- `ui/viewmodel/TransactionListViewModel.kt`
-  - `val transactions: Flow<PagingData<Transaction>>` — from use case, `.cachedIn(viewModelScope)`
-  - `val uiState: StateFlow<TransactionUiState>` — `Loading | Success | Error`
-- `ui/viewmodel/TransactionUiState.kt` — sealed class
+- `val transactions: Flow<PagingData<Transaction>>` — `.cachedIn(viewModelScope)`
+- ~~`val uiState: StateFlow<TransactionUiState>`~~ — dropped; Paging 3 load state covers all UI states, a parallel `StateFlow` would duplicate and risk drift
 
 ---
 
-### Task 8 — Compose UI
-**Commit:** `feat: add TransactionListScreen with Compose UI`
+### Task 8 — Compose UI ✅
+**Commits:**
+- `feat: add TransactionListScreen with Compose UI`
+- `fix: stabilise paging and list rendering`
+- `feat: add pull-to-refresh, seed renewal on startup, and startup UX`
 
-- `ui/screen/TransactionListScreen.kt`
-  - `collectAsLazyPagingItems()` on `transactions`
-  - `LazyColumn` with `TransactionItem` composable per item
-  - Each item: `counterpartyName` + formatted `amount` on one line, `settledAt` + `status` below
-  - `loadState.refresh is Loading` → centered `CircularProgressIndicator`
-  - `loadState.append is Loading` → bottom-of-list loading item
-  - `loadState.refresh is Error` → error message + Retry button
-  - `loadState.append is Error` → inline retry at list bottom
-- `ui/screen/TransactionItem.kt` — stateless composable
-- Wire `MainActivity` to the screen
-
----
-
-### Task 9 — AI collaboration and architecture documentation
-**Commit:** `docs: add AI collaboration summary and architecture documentation`
-
-- `COLLABORATION.md` — answers the README Part 2 questions: context, architecture, good practices, development strategy, future-proofing
-- Covers AI usage: what was used for, how it was prompted, where it was challenged
+- `PullToRefreshBox` as outer container; `isRefreshing` scoped to `loadState.mediator?.refresh`
+- Full-screen `CircularProgressIndicator` for cold start; PTR overlay for pull-to-refresh
+- `Snackbar` with Retry for PTR errors; `ErrorView` with Retry for cold-start errors
+- `AppListItem` generic component; `AppListItemPlaceholder` skeleton
+- `Throwable?.toUserMessage()` composable extension for centralised error strings
+- `AmountFormatter`, `DateFormatter` utilities
 
 ---
 
-## Fix / Refactor commits (as needed)
+### Task 9 — Tests ✅
+**Commit:** `test: add SafeApiCallTest, TransactionRepositoryImplTest, and gap coverage`
 
-Appear inline when required. Examples:
-- `fix: correct seed not persisted across process death`
-- `refactor: extract paging constants to PagingConfig object`
-- `fix: handle null settledAt in UI date formatting`
-- `docs: update roadmap with revised pagination decision`
+**Planned test scope:** `RemoteMediator` + `UseCase`
+
+**Actual test scope:**
+- `TransactionMapperTest` — `toEntity()` and `toDomain()` including nullable fields and enum parsing
+- `TransactionRemoteMediatorTest` — routing (PREPEND/REFRESH/APPEND), `initialize()`, error propagation
+- `SafeApiCallTest` — all 5 exception branches
+- `TransactionRepositoryImplTest` — `refresh`/`append` success and error paths, `MAX_PAGE` boundary, guard conditions
+
+`refresh`/`append` made `internal` for direct testing. `withTransaction` intercepted via `mockkStatic` + `secondArg`.
+
+---
+
+### Task 10 — Part 2 presentation answers ⏳
+**Commit:** `docs: add Part 2 presentation answers to COLLABORATION.md`
+
+- Fill in the "Part 2 — Presentation Answers" section of `COLLABORATION.md`
+- Context, architecture diagram, good practices, development strategy, future-proofing
+
+---
+
+### Task 11 — Pull request ⏳
+**Action:** Open PR from `feature` to `main`
+
+- PR description with summary of decisions
+- Short video of the running app (per README recommendation)
