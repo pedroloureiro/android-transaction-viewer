@@ -142,7 +142,6 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 - **TransactionLocalDataSource as single DB gateway:** I challenged the mediator having direct DAO access — it gave the mediator more operations than it needed and knowledge of the DB schema. I proposed a `TransactionLocalDataSource` facade that exposes only what each layer actually needs.
 - **PaginationState over RemoteKeyEntity:** I pushed for the mediator not to receive `RemoteKeyEntity` at all. The local data source maps the entity to a purpose-built `PaginationState(seed, nextPage)` — a network concept, not a DB concept.
 - **MAX_PAGE stays in the mediator:** I decided that `MAX_PAGE` is an API contract, not a storage concern. The mediator owns pagination termination logic.
-- **Asymmetry accepted:** I considered adding `TransactionRemoteDataSource` to mirror `TransactionLocalDataSource`, but decided it was premature abstraction for one endpoint in a 2-day exercise.
 - **`TransactionLocalDataSourceImpl` not unit tested:** Testing its atomicity requires a real Room database. Skipped for now — Robolectric + in-memory Room is a noted polish step if time allows.
 - **`runInTransaction` callback removed:** Initially injected as a function for testability. Removed once the mediator was fully decoupled — the impl owns the database and can call `withTransaction` directly.
 
@@ -196,6 +195,14 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 - **Snackbar with Retry for PTR errors:** I chose option B (Snackbar) over option A (inline banner) — less disruptive, Retry is still reachable.
 - **`loadState.mediator?.refresh` not `loadState.refresh`:** Diagnosed and fixed a PTR overlay flashing on startup. `loadState.refresh` is a combined mediator+source state; on startup the source reloads after the DB clear, which briefly shows `Loading` and triggers the overlay. Scoping to `loadState.mediator?.refresh` isolates the network-only state.
 
+### `docs: add Part 2 presentation answers to COLLABORATION.md`
+
+**What was done:** Wrote all five Part 2 sections — context, architecture (with ASCII component diagram and data flow walkthrough), good practices, development strategy, and future-proofing assessment.
+
+**My role:** Authored all content. AI assembled it from the Interaction Log and commit notes already in this file — no new interpretations, just consolidation of decisions already made and recorded.
+
+---
+
 ### `test: add SafeApiCallTest, TransactionRepositoryImplTest, and gap coverage`
 
 **What was done:** Agreed testing strategy through a grill session: mediator tests kept (routing not covered by direct repo tests), no ViewModel tests (single-line delegation), `safeApiCall` gets its own isolated test, repo's `refresh`/`append` made `internal` and tested directly with MockK. `SafeApiCallTest` covers all 5 exception branches. `TransactionRepositoryImplTest` covers refresh/append success and error paths, MAX_PAGE boundary, and guard conditions. Two gap tests added after review: `initialize()` on the mediator, and the exact `MAX_PAGE = 10_000` boundary (not just `10_001`).
@@ -217,19 +224,123 @@ Test effort is concentrated in `TransactionRemoteMediator` where there are real 
 
 ## Part 2 — Presentation Answers
 
-*(To be filled in as implementation progresses)*
-
 ### Context at the time of the skills test
-> To be written.
+
+Skills test for a Senior Android Engineer position at Qonto. The exercise required building a paginated transaction list consuming a REST API, storing data locally, and handling all load and error states in the UI.
+
+I had planned to start on Friday, but work got in the way and I lost that day entirely. Saturday I could work most of the day but had prior engagements — no long uninterrupted stretches. Sunday I was able to go all in, but that was also the day pagination gave me the most trouble: placeholders, scroll stability, the RemoteMediator not arming APPEND past page 2. I was tired by then, but pushed through and got it working.
+
+The time pressure was real but manageable. The decisions I made reflect that — I cut scope deliberately (no reset mechanism, no ViewModel tests) rather than rush something half-finished. Quality over quantity was the right call given the constraints.
+
+I used Claude (Anthropic) via the Claude Code CLI throughout — not to generate code blindly, but as a structured thinking partner. Before writing a single line of code I ran a grill session: AI challenged every architecture decision one by one, and I made the final calls. The complete decision log, including where I overrode AI recommendations, is in the Interaction Log above.
+
+---
 
 ### Architecture — main components and how they interact
-> To be written. Will include a diagram.
+
+Single-module, clean architecture with three layers: **domain**, **data**, and **ui**. Dependency direction is always inward — outer layers depend on inner, never the reverse.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  UI layer                                                        │
+│  TransactionListScreen (Compose)                                 │
+│    └─ collectAsLazyPagingItems()                                 │
+│         └─ TransactionListViewModel                              │
+│              └─ Flow<PagingData<Transaction>> (cachedIn scope)   │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ GetTransactionsUseCase
+┌──────────────────────────▼──────────────────────────────────────┐
+│  Domain layer                                                    │
+│  GetTransactionsUseCase                                          │
+│    └─ TransactionRepository (interface)                          │
+│         └─ TransactionRepositoryImpl (co-located, data layer)    │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────┐
+│  Data layer                                                      │
+│  TransactionRepositoryImpl                                       │
+│    ├─ Pager(config, RemoteMediator, pagingSourceFactory)         │
+│    ├─ refresh() / append()  ← called by mediator callbacks       │
+│    │    ├─ TransactionService (Retrofit)  ← network              │
+│    │    └─ AppDatabase (Room)             ← local                │
+│    └─ safeApiCall() → Result<T> / ApiError                       │
+│                                                                  │
+│  TransactionRemoteMediator  ← thin callback dispatcher           │
+│    ├─ PREPEND → Success(endOfPaginationReached = true)           │
+│    ├─ REFRESH → onRefresh(state)                                 │
+│    └─ APPEND  → onAppend(state)                                  │
+│                                                                  │
+│  Room: TransactionEntity, RemoteKeyEntity                        │
+│    ├─ TransactionDao  ← PagingSource (Paging 3 drives this)      │
+│    └─ RemoteKeyDao    ← tracks seed + nextPage across pages      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Data flow — cold start:**
+1. Paging 3 detects empty DB → triggers `REFRESH` on `TransactionRemoteMediator`
+2. Mediator calls `repository.refresh()` → `TransactionService.getTransactions(page=1, seed=null)`
+3. Response mapped to `TransactionEntity` list + `RemoteKeyEntity(seed, nextPage=2)`
+4. Both written atomically via `withTransaction`
+5. Room notifies its `PagingSource` → Paging 3 reloads → `Flow<PagingData<Transaction>>` emits
+6. ViewModel delivers to screen via `collectAsLazyPagingItems()`
+
+**Data flow — append (scroll to bottom):**
+Same path but Mediator calls `repository.append()`, which reads `RemoteKeyEntity` for seed and nextPage, calls the service with those values, and increments nextPage on success. Terminates when `nextPage > MAX_PAGE (10_000)`.
+
+---
 
 ### Good practices applied
-> To be written. Will reference SOLID, KISS, DRY as observed in the implementation.
+
+**SOLID:**
+- *Single Responsibility* — `TransactionRemoteMediator` is a pure callback dispatcher. All pagination logic lives in `TransactionRepositoryImpl`. `AmountFormatter` and `DateFormatter` each do one thing.
+- *Open/Closed* — `AppListItem` accepts strings and colours; any future list screen reuses it without modification.
+- *Interface Segregation* — `TransactionRepository` exposes only what the use case needs; the impl adds nothing to the public contract.
+- *Dependency Inversion* — `GetTransactionsUseCase` depends on `TransactionRepository` (interface), never on `TransactionRepositoryImpl`.
+
+**KISS:**
+- `GetTransactionsUseCaseTest` was written and then deleted — single-line delegation has no logic to test.
+- `UiState` was dropped; Paging 3's `loadState` already models all UI states from the same stream the ViewModel owns.
+- The repository accesses `AppDatabase` and `TransactionService` directly — the simplest design that does the job.
+
+**Type safety over stringly-typed code:**
+- `TransactionSide` and `TransactionStatus` are enums, not raw strings.
+- `ApiError` is a sealed class (`NetworkError`, `HttpError(code)`, `UnknownError`) — error handling is exhaustive at compile time.
+- `safeApiCall` maps all network exceptions to `ApiError` at one choke point; callers never inspect raw exceptions.
+
+**Configuration as code:**
+- `BASE_URL` lives in `gradle.properties` and surfaces via `BuildConfig` — one step away from per-flavor overrides without adding that complexity now.
+- DB name lives in `AppDatabase.companion`, not in the DI module — schema configuration belongs next to the schema.
+
+**Decision documentation:**
+- 5 ADRs written for hard, surprising, or reversible decisions. Future maintainers know *why*, not just *what*.
+
+---
 
 ### Development strategy
-> To be written. Will reference the roadmap, commit strategy, and layer prioritisation.
+
+**Grill before code.** The first session was entirely a structured decision interview — 11 architecture decisions resolved before any file was created. This produced `ROADMAP.md` and the ADRs upfront, so every subsequent commit had a clear, pre-agreed target.
+
+**Layer by layer, inner to outer.** Domain first (pure Kotlin, zero Android dependencies), then data (Room, Retrofit, Mediator), then DI wiring, then ViewModel, then Compose UI, then tests. This order meant each layer could be verified in isolation before the next was built on top.
+
+**One meaningful commit per task.** Each commit maps to a task in the roadmap with a descriptive message. The commit log is a readable history of decisions, not a changelog of file edits.
+
+**Tests at the end, scoped to value.** TDD was not viable under a 2-day constraint with significant uncertainty in the data layer design. Tests were written after the implementation stabilised, scoped to the classes with real branching logic: `safeApiCall` (5 exception paths), `TransactionRepositoryImpl` (refresh/append success and error paths, MAX_PAGE boundary), `TransactionRemoteMediator` (routing + initialize), and `TransactionMapper` (nullable fields, enum parsing). Classes with no testable logic — `GetTransactionsUseCase`, `TransactionListViewModel` — have no tests by deliberate decision.
+
+**Decisions that changed mid-implementation:**
+- Seed strategy reversed: started as a permanent session identifier (seed always persisted), switched to null on every REFRESH to show a live-updating list. The rationale is documented in the commit log.
+
+---
 
 ### Is the code future-proof?
-> To be written. Will reference ADRs, clean architecture boundaries, and scalability considerations.
+
+**Scalable without rewrites:**
+- The domain layer has zero Android dependencies — it can be moved to a separate Gradle module with no changes to its internals.
+- The package structure (`data/`, `domain/`, `ui/`) maps directly to Gradle modules if the app grows to warrant multi-module.
+- `AppListItem` is already reusable across list screens with no modification.
+- Adding dev/prod environments is one `buildTypes` block in `build.gradle.kts` — `BASE_URL` is already externalised via `BuildConfig`.
+
+**Honest about what is not future-proof:**
+- `TransactionRemoteMediator` receives its callbacks as constructor lambdas. This works cleanly for one repository but would need rethinking if multiple repositories needed to coordinate through one mediator.
+- The repository has no unit tests for its DB writes — Room's `withTransaction` atomicity requires a real database to verify. Robolectric + in-memory Room is the right path if DB-layer coverage becomes a requirement.
+
+**The ADRs carry the real future-proofing value.** They record not just what was decided but why — the trade-offs considered and the alternatives ruled out. A future developer reading ADR-0003 knows why MVI was considered and why MVVM was chosen; they will not restart that debate from scratch. ADR-0004 records that the seed-as-permanent-identifier approach was designed and then reversed, and why — so the decision is not accidentally re-introduced as a "fix."

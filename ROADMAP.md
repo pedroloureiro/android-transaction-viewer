@@ -31,6 +31,7 @@ com.qonto.transactionviewer
 │   │   ├── mapper/
 │   │   └── service/
 │   └── mediator/           ← callback dispatcher only
+├── di/                     ← Koin modules
 ├── domain/
 │   ├── model/
 │   ├── repository/         ← interface + impl co-located
@@ -39,6 +40,7 @@ com.qonto.transactionviewer
 └── ui/
     ├── components/
     ├── screen/
+    ├── theme/
     ├── utils/              ← formatters, error extensions
     └── viewmodel/
 ```
@@ -93,7 +95,6 @@ com.qonto.transactionviewer
 - ~~`TransactionLocalDataSource` facade between mediator and DB~~
 - ~~`PaginationState` as mediator-facing type~~
 - ~~`TransactionRemoteDataSource`~~
-- Mediator owning refresh/append logic directly
 
 **Actual:**
 - `TransactionRemoteMediator` reduced to a thin callback dispatcher (`onInitialize`, `onRefresh`, `onAppend` lambdas)
@@ -151,7 +152,7 @@ com.qonto.transactionviewer
 
 ---
 
-### Task 10 — Part 2 presentation answers ⏳
+### Task 10 — Part 2 presentation answers ✅
 **Commit:** `docs: add Part 2 presentation answers to COLLABORATION.md`
 
 - Fill in the "Part 2 — Presentation Answers" section of `COLLABORATION.md`
