@@ -11,7 +11,6 @@ interface RemoteKeyDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(remoteKey: RemoteKeyEntity)
 
-    // TODO: remove if unused
     @Query("SELECT * FROM remote_keys WHERE id = 'transaction_remote_key' LIMIT 1")
     suspend fun get(): RemoteKeyEntity?
 

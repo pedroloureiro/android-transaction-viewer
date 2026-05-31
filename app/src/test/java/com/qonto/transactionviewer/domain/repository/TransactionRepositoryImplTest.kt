@@ -49,7 +49,6 @@ class TransactionRepositoryImplTest {
         every { database.transactionDao() } returns transactionDao
         every { database.remoteKeyDao() } returns remoteKeyDao
         mockkStatic("androidx.room.RoomDatabaseKt")
-        //coEvery { database.withTransaction<Unit>(any()) } just Runs
         coEvery {
             database.withTransaction(any<suspend () -> Unit>())
         } coAnswers {
